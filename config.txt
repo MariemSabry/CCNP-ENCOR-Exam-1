@@ -1,0 +1,298 @@
+
+A1
+-------
+hostname A1 
+spanning-tree mode rapid-pvst
+line con 0
+ exec-timeout 0 0
+ logging synchronous
+ exit
+
+vlan 10
+vlan 30
+ exit
+interface range f0/1-24
+
+ shutdown
+
+ exit
+
+
+interface range f0/1-6
+
+ switchport mode trunk
+ 
+no shutdown
+ 
+exit
+
+interface f0/5
+switchport mode access
+switchport access vlan 10
+
+interface f0/6
+switchport mode access
+switchport access vlan 30
+
+int range f0/1-2
+channel-group 1 mode active
+ex
+int port-channel 1
+switchport mode Trunk
+
+int range f0/3-4
+channel-group 2 mode desirable
+ex
+int port-channel 2
+switchport mode Trunk
+/////////////////
+
+D1
+-----------
+hostname D1
+spanning-tree mode rapid-pvst
+line con 0
+exec-timeout 0 0
+logging synchronous
+exit
+
+interface range g1/0/1-24
+shutdown
+exit
+
+interface range g1/0/2-3, g1/0/4-5
+switchport mode trunk
+no shutdown
+
+vlan 10
+vlan 30
+ exit
+
+ip routing 
+int g1/0/1
+no switchport
+ip add 10.0.11.2 255.255.255.0
+
+interface vlan 10
+ip address 172.16.10.1 255.255.255.0
+no shut
+exit
+
+interface vlan 30
+ip address 172.16.30.1 255.255.255.0
+no shut
+exit
+
+int range g1/0/2-3
+channel-group 3 mode on
+ex
+int port-channel 3
+switchport mode Trunk
+
+spanning-tree vlan 10 root primary
+spanning-tree vlan 30 root secondary
+
+--
+ip routing
+router ospf 10
+router-id 1.1.1.2
+network 10.0.11.0 0.0.0.3 area 5
+network 172.16.10.1 0.0.0.255 area 5
+network 172.16.30.1 0.0.0.255 area 5
+show ip protocols
+show ip ospf interface brief 
+
+
+//////////////
+D2
+-------------
+hostname D2
+spanning-tree mode rapid-pvst
+line con 0
+exec-timeout 0 0
+logging synchronous
+exit
+interface range g1/0/1-24
+shutdown
+exit
+interface range g1/0/2-3, g1/0/4-5
+switchport mode trunk
+no shutdown
+
+vlan 10
+vlan 30
+ exit
+
+ip routing 
+interface vlan 10
+ip address 172.16.10.2 255.255.255.0
+no shut
+exit
+
+interface vlan 30
+ip address 172.16.30.2 255.255.255.0
+no shut
+exit
+
+spanning-tree vlan 30 root primary
+spanning-tree vlan 10 root secondary
+
+int g1/0/1
+no switchport
+ip add 10.0.12.2 255.255.255.252
+no sh 
+
+-
+ip routing
+router ospf 10
+router-id 1.1.1.3
+network 10.0.12.0 0.0.0.3 area 5
+network 172.16.10.2 0.0.0.255 area 5
+network 172.16.30.2 0.0.0.255 area 5
+
+///////////////////
+R1 
+----------
+hostname R1
+no ip domain lookup
+line con 0
+exec-timeout 0 0
+ logging synchronous
+ exit
+line vty 0 4
+ privilege level 15
+ password cisco123
+ exec-timeout 0 0
+ logging synchronous
+ login
+ exit
+
+
+int s0/1/0
+ip add 10.0.10.1 255.255.255.252
+no shut
+ex
+
+int g0/0/1
+ip add 10.0.12.1 255.255.255.252
+no shut
+ex
+
+int g0/0/0
+ip add 10.0.11.1 255.255.255.252
+no shut
+ex
+
+
+router ospf 10
+router-id 1.1.1.1
+auto-cost reference-bandwidth 1000
+network 10.0.11.0 0.0.0.3 area 5
+network 10.0.12.0 0.0.0.3 area 5
+network 10.0.10.0 0.0.0.3 area 0
+
+////////////////
+R2
+---------
+hostname R2
+no ip domain lookup
+line con 0
+exec-timeout 0 0
+ logging synchronous
+ exit
+line vty 0 4
+ privilege level 15
+ password cisco123
+ exec-timeout 0 0
+ logging synchronous
+ login
+ exit
+
+int s0/1/0
+ip add 10.0.10.2 255.255.255.252
+no shut
+ex
+int s0/1/1
+ip add 10.0.20.2 255.255.255.252
+no shut
+ex
+
+
+int lo0
+ ip add 209.165.200.1 255.255.255.0
+ exit
+
+router ospf 10
+router-id 2.2.2.2
+auto-cost reference-bandwidth 1000
+network 10.0.10.0 0.0.0.3 area 0
+network 10.0.20.0 0.0.0.3 area 0
+default-information originate
+ex
+
+ip route 0.0.0.0 0.0.0.0 Loopback0
+
+
+////////
+
+R3
+---------
+hostname R3
+no ip domain lookup
+line con 0
+exec-timeout 0 0
+ logging synchronous
+ exit
+line vty 0 4
+ privilege level 15
+ password cisco123
+ exec-timeout 0 0
+ logging synchronous
+ login
+ exit
+
+router ospf 10
+router-id 3.3.3.3
+auto-cost reference-bandwidth 1000
+network 192.168.40.0 0.0.0.255 area 25
+network 192.168.50.0 0.0.0.255 area 25
+network 10.0.20.0 0.0.0.3 area 0
+ex
+
+
+int s0/1/1
+ip add 10.0.20.1 255.255.255.252
+no sh
+ex
+
+int g0/0/0.40
+encapsulation dot1Q 40
+ip add 192.168.40.1 255.255.255.0
+
+int g0/0/0.50
+encapsulation dot1Q 50
+ip add 192.168.50.1 255.255.255.0
+
+////////////
+A2
+--------
+hostname A2 
+line con 0
+ exec-timeout 0 0
+ logging synchronous
+ exit
+
+vlan 40
+vlan 50
+
+interface f0/1
+switchport mode access
+switchport access vlan 40
+
+interface f0/2
+switchport mode access
+switchport access vlan 50
+
+interface g0/2
+switchport mode trunk
+
